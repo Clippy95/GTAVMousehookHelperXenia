@@ -32,20 +32,59 @@ FindPlayerVehicleT FindPlayerVehicle = (FindPlayerVehicleT)(0x82638CB0);
 typedef bool (*IsGamePausedT)();
 IsGamePausedT IsGamePaused = (IsGamePausedT)(0x822F55D0);
 
-/*
-typedef int (*Cameratesthook)(int *a1,float *a2, float *a3);
-Detour CameratesthookDetour;
+struct GameVersionAddresses {
+    DWORD check_addr;
+    const char* valutocomapreaddresds;
+    DWORD FindPlayerVehicle_addr;
+	DWORD IsGamePaused_addr;
+	DWORD MAYBEComputeOrbitOrientation_addr;
+	DWORD write_delta_addr;
+};
 
-typedef void (*uhh_cameraT)(double a1,double a2, int a3, int a4, int a5);
-Detour uhh_camera_detour;
-*/
+GameVersionAddresses TU26 = {
+    0x8201CD74, // check_addr
+    "GTAV Xbox360 Final %s", // valutocomapreaddresds
+    0x82638CB0, // FindPlayerVehicle_addr
+	0x822F55D0, // IsGamePaused_addr
+	0x82361090, // MAYBEComputeOrbitOrientation_addr
+	0x82362650, // write_delta_addr
+};
+
+GameVersionAddresses TU27 = {
+    0x8201CD48, // check_addr
+    "GTAV Xbox360 Final %s", // valutocomapreaddresds
+    0x82638B40, // FindPlayerVehicle_addr
+	0x822F5400, // IsGamePaused_addr
+	0x82360EC0, // MAYBEComputeOrbitOrientation_addr
+	0x82362480, // write_delta_addr
+};
+
+const int MAX_VERSIONS = 10; 
+GameVersionAddresses gameVersions[MAX_VERSIONS] = {
+    TU26,
+	TU27,
+
+};
+
+int numVersions = 2;
+GameVersionAddresses* DetermineGameVersion() {
+    for (int i = 0; i < numVersions; ++i) {
+        const char* memoryValue = reinterpret_cast<const char*>(gameVersions[i].check_addr);
+        if (strcmp(memoryValue, gameVersions[i].valutocomapreaddresds) == 0) {
+            return &gameVersions[i];
+        }
+    }
+    return nullptr;
+}
+
+
 typedef void (*MAYBEComputeOrbitOrientationT)(int camerapointer, float *orbitHeading, float *orbitPitch);
 Detour MAYBEComputeOrbitOrientation_detour;
 
 
 typedef int (*write_deltaT)(int a1, int a2);
 Detour write_delta_detour;
-//t
+
 
 float Y_delta() {
 	return -mouse_y;
@@ -58,27 +97,8 @@ float X_delta() {
 static bool run = true;
 static float timer = 0.f;
 #endif
-/*
-int camera_test(int* a1, float* a2, float* a3)
-{
 
-    auto OriginalFunction = CameratesthookDetour.GetOriginal<Cameratesthook>();
-    if (OriginalFunction)
-        return OriginalFunction(a1, a2, a3);
-	
-    return 0; 
-}
 
-void uhh_camera(double x_axis,double y_axis, int a3, int a4, int a5) {
-	x_axis  += X_delta();
-	y_axis  += Y_delta();
-	y_axis = clamp(y_axis,-90 * DTOR,90  * DTOR);
-	auto OriginalFunction = uhh_camera_detour.GetOriginal<uhh_cameraT>();
-	if(OriginalFunction)
-		return OriginalFunction(x_axis,y_axis,a3,a4,a5);
-
-}
-*/
 void print() {
 	DbgPrint("mouse_x addr: 0x%X \n mouse_y addr: 0x%X \n",&mouse_x,&mouse_y);
 	DbgPrint("mousehook_ShouldPullAroundWhenUsingMouse addr: 0x%X \n",&mousehook_ShouldPullAroundWhenUsingMouse);
@@ -153,16 +173,26 @@ int write_delta_hooked(int a1, int a2) {
 			}
 			return result;
 }
-void InstallHook()
-{
 
-	MAYBEComputeOrbitOrientation_detour = Detour((void*)0x82361090, (const void*)ComputeOrbitOrientation_Hook);
+void SetFunctionCallsAddrs(GameVersionAddresses *addr) {
+	FindPlayerVehicle = (FindPlayerVehicleT)addr->FindPlayerVehicle_addr;
+	IsGamePaused = (IsGamePausedT)addr->IsGamePaused_addr;
+}
+
+bool InstallHook()
+{
+	auto* version = DetermineGameVersion();
+	if(!version)
+		return false;
+	MAYBEComputeOrbitOrientation_detour = Detour((void*)version->MAYBEComputeOrbitOrientation_addr, (const void*)ComputeOrbitOrientation_Hook);
 	MAYBEComputeOrbitOrientation_detour.Install();
 
-	write_delta_detour = Detour((void*)0x82362650, (const void*)write_delta_hooked);
+	write_delta_detour = Detour((void*)version->write_delta_addr, (const void*)write_delta_hooked);
 	write_delta_detour.Install();
 
+	SetFunctionCallsAddrs(version);
 
+	return true;
 }
 
 void loveXBDM(){
@@ -211,7 +241,7 @@ BOOL WINAPI DllMain(HANDLE hInstDLL, DWORD fdwReason, LPVOID lpReserved) {
 #if LTCG || _DEBUG
 		start();
 #endif
-		//DbgPrint("XamGetSystemVersion() returns: 0x%X",XamGetSystemVersion());
+		DbgPrint("DetermineGameVersion() returns: 0x%X",DetermineGameVersion());
 		InstallHook();
 		print();
 		startvehiclecheck();

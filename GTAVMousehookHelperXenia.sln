@@ -9,6 +9,7 @@ Global
 		Debug|Xbox 360 = Debug|Xbox 360
 		Profile_FastCap|Xbox 360 = Profile_FastCap|Xbox 360
 		Profile|Xbox 360 = Profile|Xbox 360
+		Release_BASEADDR|Xbox 360 = Release_BASEADDR|Xbox 360
 		Release_LTCG|Xbox 360 = Release_LTCG|Xbox 360
 		Release|Xbox 360 = Release|Xbox 360
 	EndGlobalSection
@@ -21,6 +22,9 @@ Global
 		{D50C3608-86B6-4D6C-8955-8057C49F4DAE}.Profile_FastCap|Xbox 360.Build.0 = Profile_FastCap|Xbox 360
 		{D50C3608-86B6-4D6C-8955-8057C49F4DAE}.Profile|Xbox 360.ActiveCfg = Profile|Xbox 360
 		{D50C3608-86B6-4D6C-8955-8057C49F4DAE}.Profile|Xbox 360.Build.0 = Profile|Xbox 360
+		{D50C3608-86B6-4D6C-8955-8057C49F4DAE}.Release_BASEADDR|Xbox 360.ActiveCfg = Release_BASEADDR|Xbox 360
+		{D50C3608-86B6-4D6C-8955-8057C49F4DAE}.Release_BASEADDR|Xbox 360.Build.0 = Release_BASEADDR|Xbox 360
+		{D50C3608-86B6-4D6C-8955-8057C49F4DAE}.Release_BASEADDR|Xbox 360.Deploy.0 = Release_BASEADDR|Xbox 360
 		{D50C3608-86B6-4D6C-8955-8057C49F4DAE}.Release_LTCG|Xbox 360.ActiveCfg = Release_LTCG|Xbox 360
 		{D50C3608-86B6-4D6C-8955-8057C49F4DAE}.Release_LTCG|Xbox 360.Build.0 = Release_LTCG|Xbox 360
 		{D50C3608-86B6-4D6C-8955-8057C49F4DAE}.Release|Xbox 360.ActiveCfg = Release|Xbox 360
