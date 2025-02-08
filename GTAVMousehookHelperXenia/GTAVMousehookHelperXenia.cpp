@@ -12,7 +12,8 @@ __declspec(dllexport)  bool mousehook_ShouldPullAroundWhenUsingMouse = false;
 __declspec(dllexport) int vehicle_type_player;
 
 #define DTOR 0.017453292
-//#define RTOD = 57.2958
+
+#define RTOD 57.2958
 
 
 template <typename T>
@@ -32,6 +33,7 @@ FindPlayerVehicleT FindPlayerVehicle = (FindPlayerVehicleT)(0x82638CB0);
 typedef bool (*IsGamePausedT)();
 IsGamePausedT IsGamePaused = (IsGamePausedT)(0x822F55D0);
 
+
 struct GameVersionAddresses {
     DWORD check_addr;
     const char* valutocomapreaddresds;
@@ -39,6 +41,8 @@ struct GameVersionAddresses {
 	DWORD IsGamePaused_addr;
 	DWORD MAYBEComputeOrbitOrientation_addr;
 	DWORD write_delta_addr;
+	DWORD UpdateMapScreenInput_addr;
+	DWORD vNewPos_x_addr;
 };
 
 GameVersionAddresses TU26 = {
@@ -48,6 +52,8 @@ GameVersionAddresses TU26 = {
 	0x822F55D0, // IsGamePaused_addr
 	0x82361090, // MAYBEComputeOrbitOrientation_addr
 	0x82362650, // write_delta_addr
+	NULL,
+	NULL,
 };
 
 GameVersionAddresses TU27 = {
@@ -57,6 +63,8 @@ GameVersionAddresses TU27 = {
 	0x822F5400, // IsGamePaused_addr
 	0x82360EC0, // MAYBEComputeOrbitOrientation_addr
 	0x82362480, // write_delta_addr
+	0x822EA818, // UpdateMapScreenInput_addr
+	0x839F7270, // vNewPos_x_addr
 };
 
 const int MAX_VERSIONS = 10; 
@@ -84,6 +92,9 @@ Detour MAYBEComputeOrbitOrientation_detour;
 
 typedef int (*write_deltaT)(int a1, int a2);
 Detour write_delta_detour;
+
+typedef int (*UpdateMapScreenInputT)(char bInitialEntry);
+Detour UpdateMapScreenInput_detour;
 
 
 float Y_delta() {
@@ -115,6 +126,17 @@ DWORD __fastcall getvehicletype(int vehicle)
 	return *(DWORD*)(vehicle + 0x664);
 }
 
+int UpdateMapScreenInput_Hook(char bInitialEntry1){
+	//auto* version = DetermineGameVersion();
+	auto OriginalFunction = UpdateMapScreenInput_detour.GetOriginal<UpdateMapScreenInputT>();
+	/*
+	float *x = (float*)(version->vNewPos_x_addr);
+	float *y = (float*)(version->vNewPos_x_addr + 0x4);
+	*x = *x + (X_delta() * RTOD);
+	*y = *y + (X_delta() * RTOD);*/
+	return OriginalFunction(bInitialEntry1);
+}
+
 void ComputeOrbitOrientation_Hook(int camerapointer, float *orbitHeading, float *orbitPitch) {
 	auto OriginalFunction = MAYBEComputeOrbitOrientation_detour.GetOriginal<MAYBEComputeOrbitOrientationT>();
 	int v17 = *(DWORD*)(camerapointer + 0x340);
@@ -133,8 +155,34 @@ void ComputeOrbitOrientation_Hook(int camerapointer, float *orbitHeading, float 
 	return; 
 }
 
+static signed int time_until_uncenter = 0;
+
+#define THREAD_SLEEP 90
+
+void centering(){
+    #define timer_to_reset 2430
+    if(X_delta() != 0.f || Y_delta() != 0.f) {
+        mousehook_ShouldPullAroundWhenUsingMouse = 1;
+        time_until_uncenter = timer_to_reset;
+		DbgPrint("HITTING");
+    }
+    
+	else if(mousehook_ShouldPullAroundWhenUsingMouse == 1 && time_until_uncenter > 0) {
+		time_until_uncenter = std::max<int>(0, time_until_uncenter - THREAD_SLEEP);
+    }
+
+    if(time_until_uncenter <= 0)
+        mousehook_ShouldPullAroundWhenUsingMouse = 0;
+
+DbgPrint("centering() called, X_delta: %f, Y_delta: %f, time_until_uncenter: %d\n",
+         X_delta(), Y_delta(), time_until_uncenter);
+
+}
+
+
 void VehicleChecks() {
 		while(true){
+		//centering();
 		int temp = 420;
 		if(IsGamePaused())
 			temp = 421;
@@ -146,13 +194,13 @@ void VehicleChecks() {
 
 		}
 		vehicle_type_player = temp;
-		Sleep(90);
+		Sleep(THREAD_SLEEP);
 	}
 		
 
 }
 
-void startvehiclecheck() {
+void startloop() {
 	HANDLE hThread; 
 	DWORD threadId;
 	ExCreateThread(&hThread, 0, &threadId, nullptr, (LPTHREAD_START_ROUTINE)VehicleChecks, NULL, 0x2);
@@ -189,6 +237,13 @@ bool InstallHook()
 
 	write_delta_detour = Detour((void*)version->write_delta_addr, (const void*)write_delta_hooked);
 	write_delta_detour.Install();
+
+	if(version->UpdateMapScreenInput_addr){
+	//UpdateMapScreenInput_detour = Detour((void*)version->UpdateMapScreenInput_addr, (const void*)UpdateMapScreenInput_Hook);
+	//UpdateMapScreenInput_detour.Install();
+	
+	}
+
 
 	SetFunctionCallsAddrs(version);
 
@@ -241,10 +296,10 @@ BOOL WINAPI DllMain(HANDLE hInstDLL, DWORD fdwReason, LPVOID lpReserved) {
 #if LTCG || _DEBUG
 		start();
 #endif
-		DbgPrint("DetermineGameVersion() returns: 0x%X",DetermineGameVersion());
+		loveXBDM();
 		InstallHook();
 		print();
-		startvehiclecheck();
+		startloop();
         break;
     }
     case DLL_PROCESS_DETACH:
